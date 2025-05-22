@@ -56,12 +56,12 @@ jobs:
           # Stoppe die existierende Anwendung
           echo "Stopping existing application..."
           sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'sudo systemctl stop vaadin-app || echo "Service was not running"'
+            'echo "$DROPLET_PASSWORD" | sudo -S systemctl stop vaadin-app || echo "Service was not running"'
           
           # Erstelle Backup der alten Version
           echo "Creating backup of old version..."
           sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'sudo cp /opt/vaadin-app/app.jar /opt/vaadin-app/app.jar.backup || echo "No previous version found"'
+            'echo "$DROPLET_PASSWORD" | sudo -S cp /opt/vaadin-app/app.jar /opt/vaadin-app/app.jar.backup || echo "No previous version found"'
           
           # Lade neue JAR-Datei hoch
           echo "Uploading new JAR file..."
@@ -70,15 +70,15 @@ jobs:
           # Verschiebe JAR-Datei an den finalen Ort und setze Berechtigungen
           echo "Installing new version..."
           sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'sudo mv /tmp/app.jar /opt/vaadin-app/app.jar && sudo chown vaadin-app:vaadin-app /opt/vaadin-app/app.jar && sudo chmod +x /opt/vaadin-app/app.jar'
+            'echo "$DROPLET_PASSWORD" | sudo -S mv /tmp/app.jar /opt/vaadin-app/app.jar && echo "$DROPLET_PASSWORD" | sudo -S chown vaadin-app:vaadin-app /opt/vaadin-app/app.jar && echo "$DROPLET_PASSWORD" | sudo -S chmod +x /opt/vaadin-app/app.jar'
           
           # Starte die Anwendung
           echo "Starting application..."
           sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'sudo systemctl start vaadin-app'
+            'echo "$DROPLET_PASSWORD" | sudo -S systemctl start vaadin-app'
           
           # Warte kurz und überprüfe den Status
           sleep 5
           echo "Checking application status..."
           sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'sudo systemctl status vaadin-app --no-pager'
+            'echo "$DROPLET_PASSWORD" | sudo -S systemctl status vaadin-app --no-pager'
