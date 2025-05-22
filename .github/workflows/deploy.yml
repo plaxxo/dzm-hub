@@ -40,14 +40,20 @@ jobs:
         with:
           name: vaadin-app
 
-      - name: Install sshpass
-        run: sudo apt-get update && sudo apt-get install -y sshpass
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to DigitalOcean Droplet
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          DROPLET_PASSWORD: ${{ secrets.DROPLET_PASSWORD }}
         run: |
           # Finde die JAR-Datei
           JAR_FILE=$(ls *.jar | head -1)
@@ -55,30 +61,27 @@ jobs:
           
           # Stoppe die existierende Anwendung
           echo "Stopping existing application..."
-          sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'echo "$DROPLET_PASSWORD" | sudo -S systemctl stop vaadin-app || echo "Service was not running"'
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl stop vaadin-app || echo "Service was not running"'
           
           # Erstelle Backup der alten Version
           echo "Creating backup of old version..."
-          sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'echo "$DROPLET_PASSWORD" | sudo -S cp /opt/vaadin-app/app.jar /opt/vaadin-app/app.jar.backup || echo "No previous version found"'
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo cp /opt/vaadin-app/app.jar /opt/vaadin-app/app.jar.backup || echo "No previous version found"'
           
           # Lade neue JAR-Datei hoch
           echo "Uploading new JAR file..."
-          sshpass -p "$DROPLET_PASSWORD" scp -o StrictHostKeyChecking=no $JAR_FILE $DROPLET_USER@$DROPLET_HOST:/tmp/app.jar
+          scp $JAR_FILE $DROPLET_USER@$DROPLET_HOST:/tmp/app.jar
           
           # Verschiebe JAR-Datei an den finalen Ort und setze Berechtigungen
           echo "Installing new version..."
-          sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'echo "$DROPLET_PASSWORD" | sudo -S mv /tmp/app.jar /opt/vaadin-app/app.jar && echo "$DROPLET_PASSWORD" | sudo -S chown vaadin-app:vaadin-app /opt/vaadin-app/app.jar && echo "$DROPLET_PASSWORD" | sudo -S chmod +x /opt/vaadin-app/app.jar'
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo mv /tmp/app.jar /opt/vaadin-app/app.jar && sudo chown vaadin-app:vaadin-app /opt/vaadin-app/app.jar && sudo chmod +x /opt/vaadin-app/app.jar'
           
           # Starte die Anwendung
           echo "Starting application..."
-          sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'echo "$DROPLET_PASSWORD" | sudo -S systemctl start vaadin-app'
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl start vaadin-app'
           
           # Warte kurz und überprüfe den Status
           sleep 5
           echo "Checking application status..."
-          sshpass -p "$DROPLET_PASSWORD" ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST \
-            'echo "$DROPLET_PASSWORD" | sudo -S systemctl status vaadin-app --no-pager'
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl status vaadin-app --no-pager'
+          
+          echo "Deployment completed successfully!"
