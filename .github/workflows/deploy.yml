@@ -70,9 +70,18 @@ jobs:
           echo "Starting application..."
           ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl start vaadin-app'
           
-          # Warte kurz und überprüfe den Status
-          sleep 5
-          echo "Checking application status..."
-          ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl status vaadin-app --no-pager'
+          # Warte und überprüfe mehrmals
+          echo "Waiting for application to start..."
+          sleep 10
           
-          echo "Deployment completed successfully!"
+          # Detaillierte Statusprüfung
+          echo "Checking application status..."
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo systemctl status vaadin-app --no-pager -l'
+          
+          # Logs anzeigen bei Fehlern
+          echo "Recent application logs:"
+          ssh $DROPLET_USER@$DROPLET_HOST 'sudo journalctl -u vaadin-app --since "2 minutes ago" --no-pager'
+          
+          # Prüfe ob der Port erreichbar ist (falls Ihre App z.B. auf Port 8080 läuft)
+          echo "Checking if application port is accessible..."
+          ssh $DROPLET_USER@$DROPLET_HOST 'netstat -tlnp | grep :8080 || echo "Port 8080 not listening"'
